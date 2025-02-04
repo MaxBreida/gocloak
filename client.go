@@ -12,14 +12,13 @@ import (
 	"sync"
 	"time"
 
+	"github.com/Nerzal/gocloak/v13/pkg/jwx"
 	"github.com/go-resty/resty/v2"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
 	"github.com/segmentio/ksuid"
 	"golang.org/x/mod/semver"
-
-	"github.com/Nerzal/gocloak/v13/pkg/jwx"
 )
 
 // GoCloak provides functionalities to talk to Keycloak.
@@ -64,14 +63,9 @@ func makeURL(path ...string) string {
 //
 // 1 if the provided version is higher than the server version
 func (g *GoCloak) compareVersions(ctx context.Context, v, token string) (int, error) {
-	curVersion := g.Config.version
-	if curVersion == "" {
-		curV, err := g.getServerVersion(ctx, token)
-		if err != nil {
-			return 0, err
-		}
-
-		curVersion = curV
+	curVersion, err := g.getServerVersion(ctx, token)
+	if err != nil {
+		return 0, err
 	}
 
 	curVersion = "v" + curVersion
@@ -3626,6 +3620,7 @@ func (g *GoCloak) CreatePolicy(ctx context.Context, token, realm, idOfClient str
 	if err != nil {
 		return nil, err
 	}
+
 	shouldAddType := compResult != 1
 
 	path := []string{"clients", idOfClient, "authz", "resource-server", "policy"}

@@ -581,7 +581,6 @@ type PolicyRepresentation struct {
 	Type             *string            `json:"type,omitempty"`
 	RolePolicyRepresentation
 	JSPolicyRepresentation
-	ClientPolicyRepresentation
 	TimePolicyRepresentation
 	UserPolicyRepresentation
 	AggregatedPolicyRepresentation
@@ -596,11 +595,6 @@ type RolePolicyRepresentation struct {
 // JSPolicyRepresentation represents js based policies
 type JSPolicyRepresentation struct {
 	Code *string `json:"code,omitempty"`
-}
-
-// ClientPolicyRepresentation represents client based policies
-type ClientPolicyRepresentation struct {
-	Clients *[]string `json:"clients,omitempty"`
 }
 
 // TimePolicyRepresentation represents time based policies
@@ -1493,7 +1487,6 @@ func (v *RoleDefinition) String() string                            { return pre
 func (v *PolicyRepresentation) String() string                      { return prettyStringStruct(v) }
 func (v *RolePolicyRepresentation) String() string                  { return prettyStringStruct(v) }
 func (v *JSPolicyRepresentation) String() string                    { return prettyStringStruct(v) }
-func (v *ClientPolicyRepresentation) String() string                { return prettyStringStruct(v) }
 func (v *TimePolicyRepresentation) String() string                  { return prettyStringStruct(v) }
 func (v *UserPolicyRepresentation) String() string                  { return prettyStringStruct(v) }
 func (v *AggregatedPolicyRepresentation) String() string            { return prettyStringStruct(v) }
