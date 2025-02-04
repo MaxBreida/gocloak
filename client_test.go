@@ -21,12 +21,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Nerzal/gocloak/v13"
 	"github.com/go-resty/resty/v2"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/crypto/pkcs12"
-
-	"github.com/Nerzal/gocloak/v13"
 )
 
 type configAdmin struct {
@@ -1243,11 +1242,6 @@ func Test_GroupPermissions(t *testing.T) {
 		Description: gocloak.StringP("Policy Description"),
 		Type:        gocloak.StringP("client"),
 		Logic:       gocloak.POSITIVE,
-		// ClientPolicyRepresentation: gocloak.ClientPolicyRepresentation{
-		// 	Clients: &[]string{
-		// 		gocloakClientID,
-		// 	},
-		// },
 	})
 
 	for _, scopeID := range *updatedGroupPermission.ScopePermissions {
