@@ -8,9 +8,8 @@ import (
 	"log"
 	"testing"
 
-	"github.com/stretchr/testify/require"
-
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/stretchr/testify/require"
 )
 
 var claims = jwt.MapClaims{

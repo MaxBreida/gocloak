@@ -476,19 +476,19 @@ type RestyLogWriter struct {
 	t testing.TB
 }
 
-func (w *RestyLogWriter) Errorf(format string, v ...interface{}) {
+func (w *RestyLogWriter) Errorf(format string, v ...any) {
 	w.write("[ERROR] "+format, v...)
 }
 
-func (w *RestyLogWriter) Warnf(format string, v ...interface{}) {
+func (w *RestyLogWriter) Warnf(format string, v ...any) {
 	w.write("[WARN] "+format, v...)
 }
 
-func (w *RestyLogWriter) Debugf(format string, v ...interface{}) {
+func (w *RestyLogWriter) Debugf(format string, v ...any) {
 	w.write("[DEBUG] "+format, v...)
 }
 
-func (w *RestyLogWriter) write(format string, v ...interface{}) {
+func (w *RestyLogWriter) write(format string, v ...any) {
 	w.t.Logf(format, v...)
 }
 
@@ -3303,7 +3303,6 @@ func Test_GetUserBruteForceDetectionStatus(t *testing.T) {
 		token.AccessToken,
 		*realm)
 	require.NoError(t, err, "UpdateRealm failed")
-
 }
 
 func Test_CreateUserCustomAttributes(t *testing.T) {
@@ -6289,7 +6288,7 @@ func Test_CreatePermissionTicket(t *testing.T) {
 	require.NoError(t, err, "CreatePermissionTicket failed")
 	t.Logf("Created PermissionTicket: %+v", *(ticket.Ticket))
 
-	pt, err := jwt.ParseWithClaims(*(ticket.Ticket), &gocloak.PermissionTicketRepresentation{}, func(_ *jwt.Token) (interface{}, error) {
+	pt, err := jwt.ParseWithClaims(*(ticket.Ticket), &gocloak.PermissionTicketRepresentation{}, func(_ *jwt.Token) (any, error) {
 		return []byte(""), nil
 	})
 
@@ -6610,7 +6609,7 @@ func Test_GetClientsWithPagination(t *testing.T) {
 	defer tearDown()
 	t.Log(createdClientID)
 	first := 0
-	max := 1
+	maxParam := 1
 	// Looking for a created client
 	clients, err := client.GetClients(
 		context.Background(),
@@ -6618,11 +6617,11 @@ func Test_GetClientsWithPagination(t *testing.T) {
 		cfg.GoCloak.Realm,
 		gocloak.GetClientsParams{
 			First: &first,
-			Max:   &max,
+			Max:   &maxParam,
 		},
 	)
 	require.NoError(t, err)
-	require.Equal(t, max, len(clients))
+	require.Equal(t, maxParam, len(clients))
 }
 
 func Test_ImportIdentityProviderConfig(t *testing.T) {
