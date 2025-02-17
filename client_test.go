@@ -6001,7 +6001,7 @@ func Test_CreateGetUpdateDeleteResourcePolicy(t *testing.T) {
 		policies, err := client.GetResourcePolicies(context.Background(), token.AccessToken, cfg.GoCloak.Realm, params)
 		require.NoError(t, err, "could not get resource policies")
 		require.Len(t, policies, 1)
-		require.NotEqual(t, policies[0], nil)
+		require.NotNil(t, policies[0])
 
 		if len(policies) == 1 && policies[0] != nil {
 			require.Equal(t, *policyNameP, *(policies[0].Name))
@@ -6292,12 +6292,12 @@ func Test_GrantGetUpdateDeleteUserPermission(t *testing.T) {
 	result, err := client.GrantUserPermission(context.Background(), token.AccessToken, cfg.GoCloak.Realm, permission)
 
 	require.NoError(t, err, "GrantUserPermission failed")
-	require.NotEqual(t, nil, result)
+	require.NotNil(t, result)
 
 	if result != nil {
-		require.NotEqual(t, result.ResourceID, nil)
-		require.NotEqual(t, result.RequesterID, nil)
-		require.NotEqual(t, result.Granted, nil)
+		require.NotNil(t, result.ResourceID)
+		require.NotNil(t, result.RequesterID)
+		require.NotNil(t, result.Granted)
 
 		if result.ResourceID != nil {
 			require.Equal(t, resourceID, *(result.ResourceID))
@@ -6328,7 +6328,7 @@ func Test_GrantGetUpdateDeleteUserPermission(t *testing.T) {
 	result, err = client.UpdateUserPermission(context.Background(), token.AccessToken, cfg.GoCloak.Realm, permission)
 
 	require.NoError(t, err, "UpdateUserPermission failed")
-	require.Equal(t, nil, result)
+	require.Nil(t, result)
 
 	// Get (no permission expected to be returned)
 	params = gocloak.GetUserPermissionParams{

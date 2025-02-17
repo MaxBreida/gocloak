@@ -97,9 +97,9 @@ func TestGetQueryParams(t *testing.T) {
 
 	params, err := gocloak.GetQueryParams(TestParams{})
 	assert.NoError(t, err)
-	assert.Len(
+	assert.Empty(
 		t,
-		params, 0,
+		params,
 		"Params must be empty, but got: %+v",
 		params,
 	)

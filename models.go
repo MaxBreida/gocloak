@@ -342,6 +342,7 @@ type Group struct {
 	Access      *map[string]bool     `json:"access,omitempty"`
 	ClientRoles *map[string][]string `json:"clientRoles,omitempty"`
 	RealmRoles  *[]string            `json:"realmRoles,omitempty"`
+	ParentID    *string              `json:"parentId,omitempty"`
 }
 
 // GroupsCount represents the groups count response from keycloak
@@ -357,6 +358,15 @@ type GetGroupsParams struct {
 	Full                *bool   `json:"full,string,omitempty"`
 	Max                 *int    `json:"max,string,omitempty"`
 	Q                   *string `json:"q,omitempty"`
+	Search              *string `json:"search,omitempty"`
+}
+
+// GetChildGroupsParams represents the optional parameters for getting child groups
+type GetChildGroupsParams struct {
+	BriefRepresentation *bool   `json:"briefRepresentation,string,omitempty"`
+	Exact               *bool   `json:"exact,string,omitempty"`
+	First               *int    `json:"first,string,omitempty"`
+	Max                 *int    `json:"max,string,omitempty"`
 	Search              *string `json:"search,omitempty"`
 }
 
