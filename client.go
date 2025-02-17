@@ -12,13 +12,12 @@ import (
 	"sync"
 	"time"
 
+	"github.com/Nerzal/gocloak/v13/pkg/jwx"
 	"github.com/go-resty/resty/v2"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
 	"github.com/segmentio/ksuid"
-
-	"github.com/Nerzal/gocloak/v13/pkg/jwx"
 )
 
 // GoCloak provides functionalities to talk to Keycloak.
@@ -51,6 +50,7 @@ func makeURL(path ...string) string {
 // GetRequest returns a request for calling endpoints.
 func (g *GoCloak) GetRequest(ctx context.Context) *resty.Request {
 	var err HTTPErrorResponse
+
 	return injectTracingHeaders(
 		ctx, g.restyClient.R().
 			SetContext(ctx).
@@ -93,7 +93,7 @@ func (g *GoCloak) GetRequestWithBasicAuth(ctx context.Context, clientID, clientS
 	return req
 }
 
-func (g *GoCloak) getRequestingParty(ctx context.Context, token string, realm string, options RequestingPartyTokenOptions, res interface{}) (*resty.Response, error) {
+func (g *GoCloak) getRequestingParty(ctx context.Context, token, realm string, options RequestingPartyTokenOptions, res any) (*resty.Response, error) {
 	return g.GetRequestWithBearerAuth(ctx, token).
 		SetFormData(options.FormData()).
 		SetFormDataFromValues(url.Values{"permission": PStringSlice(options.Permissions)}).
@@ -215,16 +215,19 @@ func (g *GoCloak) SetRestyClient(restyClient *resty.Client) {
 
 func (g *GoCloak) getRealmURL(realm string, path ...string) string {
 	path = append([]string{g.basePath, g.Config.authRealms, realm}, path...)
+
 	return makeURL(path...)
 }
 
 func (g *GoCloak) getAdminRealmURL(realm string, path ...string) string {
 	path = append([]string{g.basePath, g.Config.authAdminRealms, realm}, path...)
+
 	return makeURL(path...)
 }
 
-func (g *GoCloak) getAttackDetectionURL(realm string, user string, path ...string) string {
+func (g *GoCloak) getAttackDetectionURL(realm, user string, path ...string) string {
 	path = append([]string{g.basePath, g.Config.authAdminRealms, realm, g.Config.attackDetection, user}, path...)
+
 	return makeURL(path...)
 }
 
@@ -320,10 +323,10 @@ func (g *GoCloak) GetUserInfo(ctx context.Context, accessToken, realm string) (*
 }
 
 // GetRawUserInfo calls the UserInfo endpoint and returns a raw json object
-func (g *GoCloak) GetRawUserInfo(ctx context.Context, accessToken, realm string) (map[string]interface{}, error) {
+func (g *GoCloak) GetRawUserInfo(ctx context.Context, accessToken, realm string) (map[string]any, error) {
 	const errMessage = "could not get user info"
 
-	var result map[string]interface{}
+	var result map[string]any
 	resp, err := g.GetRequestWithBearerAuth(ctx, accessToken).
 		SetResult(&result).
 		Get(g.getRealmURL(realm, g.Config.openIDConnect, "userinfo"))
@@ -427,9 +430,11 @@ func (g *GoCloak) decodeAccessTokenWithClaims(ctx context.Context, accessToken, 
 	if err != nil {
 		return nil, errors.Wrap(err, errMessage)
 	}
+
 	if certResult.Keys == nil {
 		return nil, errors.Wrap(errors.New("there is no keys to decode the token"), errMessage)
 	}
+
 	usedKey := findUsedKey(decodedHeader.Kid, *certResult.Keys)
 	if usedKey == nil {
 		return nil, errors.Wrap(errors.New("cannot find a key to decode the token"), errMessage)
@@ -440,16 +445,19 @@ func (g *GoCloak) decodeAccessTokenWithClaims(ctx context.Context, accessToken, 
 	} else if strings.HasPrefix(decodedHeader.Alg, "RS") {
 		return jwx.DecodeAccessTokenRSACustomClaims(accessToken, usedKey.E, usedKey.N, claims)
 	}
-	return nil, fmt.Errorf("unsupported algorithm")
+
+	return nil, errors.New("unsupported algorithm")
 }
 
 // DecodeAccessToken decodes the accessToken
 func (g *GoCloak) DecodeAccessToken(ctx context.Context, accessToken, realm string) (*jwt.Token, *jwt.MapClaims, error) {
 	claims := jwt.MapClaims{}
+
 	token, err := g.decodeAccessTokenWithClaims(ctx, accessToken, realm, claims)
 	if err != nil {
 		return nil, nil, err
 	}
+
 	return token, &claims, nil
 }
 
@@ -508,6 +516,7 @@ func (g *GoCloak) GetRequestingPartyPermissions(ctx context.Context, token, real
 	if err := checkForError(resp, err, errMessage); err != nil {
 		return nil, err
 	}
+
 	return &res, nil
 }
 
@@ -577,6 +586,7 @@ func (g *GoCloak) LoginClientTokenExchange(ctx context.Context, clientID, token,
 	if userID != "" {
 		tokenOptions.RequestedSubject = &userID
 	}
+
 	return g.GetToken(ctx, realm, tokenOptions)
 }
 
@@ -585,7 +595,7 @@ func (g *GoCloak) LoginClientSignedJWT(
 	ctx context.Context,
 	clientID,
 	realm string,
-	key interface{},
+	key any,
 	signedMethod jwt.SigningMethod,
 	expiresAt *jwt.NumericDate,
 ) (*JWT, error) {
@@ -598,6 +608,7 @@ func (g *GoCloak) LoginClientSignedJWT(
 			g.getRealmURL(realm),
 		},
 	}
+
 	assertion, err := jwx.SignClaims(claims, key, signedMethod)
 	if err != nil {
 		return nil, err
@@ -715,6 +726,7 @@ func (g *GoCloak) SendVerifyEmail(ctx context.Context, token, userID, realm stri
 	const errMessage = "could not execute actions email"
 
 	queryParams := map[string]string{}
+
 	if params != nil {
 		if params[0].ClientID != nil {
 			queryParams["client_id"] = *params[0].ClientID
@@ -743,6 +755,7 @@ func (g *GoCloak) CreateGroup(ctx context.Context, token, realm string, group Gr
 	if err := checkForError(resp, err, errMessage); err != nil {
 		return "", err
 	}
+
 	return getID(resp), nil
 }
 
@@ -759,6 +772,23 @@ func (g *GoCloak) CreateChildGroup(ctx context.Context, token, realm, groupID st
 	}
 
 	return getID(resp), nil
+}
+
+// GetChildGroups creates a new child group
+func (g *GoCloak) GetChildGroups(ctx context.Context, token, realm, groupID string) ([]Group, error) {
+	const errMessage = "could not create child group"
+
+	var result []Group
+
+	resp, err := g.GetRequestWithBearerAuth(ctx, token).
+		SetResult(&result).
+		Get(g.getAdminRealmURL(realm, "groups", groupID, "children"))
+
+	if err := checkForError(resp, err, errMessage); err != nil {
+		return nil, err
+	}
+
+	return result, nil
 }
 
 // CreateComponent creates the given component.
@@ -861,6 +891,7 @@ func (g *GoCloak) UpdateGroup(ctx context.Context, token, realm string, updatedG
 	if NilOrEmpty(updatedGroup.ID) {
 		return errors.Wrap(errors.New("ID of a group required"), errMessage)
 	}
+
 	resp, err := g.GetRequestWithBearerAuth(ctx, token).
 		SetBody(updatedGroup).
 		Put(g.getAdminRealmURL(realm, "groups", PString(updatedGroup.ID)))
@@ -869,7 +900,7 @@ func (g *GoCloak) UpdateGroup(ctx context.Context, token, realm string, updatedG
 }
 
 // UpdateGroupManagementPermissions updates the given group management permissions
-func (g *GoCloak) UpdateGroupManagementPermissions(ctx context.Context, accessToken, realm string, idOfGroup string, managementPermissions ManagementPermissionRepresentation) (*ManagementPermissionRepresentation, error) {
+func (g *GoCloak) UpdateGroupManagementPermissions(ctx context.Context, accessToken, realm, idOfGroup string, managementPermissions ManagementPermissionRepresentation) (*ManagementPermissionRepresentation, error) {
 	const errMessage = "could not update group management permissions"
 
 	var result ManagementPermissionRepresentation
@@ -924,7 +955,7 @@ func (g *GoCloak) UpdateClientRepresentation(ctx context.Context, accessToken, r
 }
 
 // UpdateClientManagementPermissions updates the given client management permissions
-func (g *GoCloak) UpdateClientManagementPermissions(ctx context.Context, accessToken, realm string, idOfClient string, managementPermissions ManagementPermissionRepresentation) (*ManagementPermissionRepresentation, error) {
+func (g *GoCloak) UpdateClientManagementPermissions(ctx context.Context, accessToken, realm, idOfClient string, managementPermissions ManagementPermissionRepresentation) (*ManagementPermissionRepresentation, error) {
 	const errMessage = "could not update client management permissions"
 
 	var result ManagementPermissionRepresentation
@@ -1455,6 +1486,7 @@ func (g *GoCloak) GetClientOfflineSessions(ctx context.Context, token, realm, id
 	var res []*UserSessionRepresentation
 
 	queryParams := map[string]string{}
+
 	if len(params) > 0 {
 		var err error
 
@@ -1482,6 +1514,7 @@ func (g *GoCloak) GetClientUserSessions(ctx context.Context, token, realm, idOfC
 	var res []*UserSessionRepresentation
 
 	queryParams := map[string]string{}
+
 	if len(params) > 0 {
 		var err error
 
@@ -1580,6 +1613,7 @@ func (g *GoCloak) GetComponentsWithParams(ctx context.Context, token, realm stri
 	if err != nil {
 		return nil, errors.Wrap(err, errMessage)
 	}
+
 	resp, err := g.GetRequestWithBearerAuth(ctx, token).
 		SetResult(&result).
 		SetQueryParams(queryParams).
@@ -1593,11 +1627,11 @@ func (g *GoCloak) GetComponentsWithParams(ctx context.Context, token, realm stri
 }
 
 // GetComponent get exactly one component by ID
-func (g *GoCloak) GetComponent(ctx context.Context, token, realm string, componentID string) (*Component, error) {
+func (g *GoCloak) GetComponent(ctx context.Context, token, realm, componentID string) (*Component, error) {
 	const errMessage = "could not get components"
 	var result *Component
 
-	componentURL := fmt.Sprintf("components/%s", componentID)
+	componentURL := "components/" + componentID
 
 	resp, err := g.GetRequestWithBearerAuth(ctx, token).
 		SetResult(&result).
@@ -1722,6 +1756,7 @@ func (g *GoCloak) GetGroups(ctx context.Context, token, realm string, params Get
 	const errMessage = "could not get groups"
 
 	var result []*Group
+
 	queryParams, err := GetQueryParams(params)
 	if err != nil {
 		return nil, errors.Wrap(err, errMessage)
@@ -1741,7 +1776,7 @@ func (g *GoCloak) GetGroups(ctx context.Context, token, realm string, params Get
 
 // GetGroupManagementPermissions returns whether group Authorization permissions have been initialized or not and a reference
 // to the managed permissions
-func (g *GoCloak) GetGroupManagementPermissions(ctx context.Context, token, realm string, idOfGroup string) (*ManagementPermissionRepresentation, error) {
+func (g *GoCloak) GetGroupManagementPermissions(ctx context.Context, token, realm, idOfGroup string) (*ManagementPermissionRepresentation, error) {
 	const errMessage = "could not get management permissions"
 
 	var result ManagementPermissionRepresentation
@@ -1757,7 +1792,7 @@ func (g *GoCloak) GetGroupManagementPermissions(ctx context.Context, token, real
 }
 
 // GetGroupsByRole gets groups assigned with a specific role of a realm
-func (g *GoCloak) GetGroupsByRole(ctx context.Context, token, realm string, roleName string) ([]*Group, error) {
+func (g *GoCloak) GetGroupsByRole(ctx context.Context, token, realm, roleName string) ([]*Group, error) {
 	const errMessage = "could not get groups"
 
 	var result []*Group
@@ -1773,7 +1808,7 @@ func (g *GoCloak) GetGroupsByRole(ctx context.Context, token, realm string, role
 }
 
 // GetGroupsByClientRole gets groups with specified roles assigned of given client within a realm
-func (g *GoCloak) GetGroupsByClientRole(ctx context.Context, token, realm string, roleName string, clientID string) ([]*Group, error) {
+func (g *GoCloak) GetGroupsByClientRole(ctx context.Context, token, realm, roleName, clientID string) ([]*Group, error) {
 	const errMessage = "could not get groups"
 
 	var result []*Group
@@ -1793,10 +1828,12 @@ func (g *GoCloak) GetGroupsCount(ctx context.Context, token, realm string, param
 	const errMessage = "could not get groups count"
 
 	var result GroupsCount
+
 	queryParams, err := GetQueryParams(params)
 	if err != nil {
 		return 0, errors.Wrap(err, errMessage)
 	}
+
 	resp, err := g.GetRequestWithBearerAuth(ctx, token).
 		SetResult(&result).
 		SetQueryParams(queryParams).
@@ -1814,6 +1851,7 @@ func (g *GoCloak) GetGroupMembers(ctx context.Context, token, realm, groupID str
 	const errMessage = "could not get group members"
 
 	var result []*User
+
 	queryParams, err := GetQueryParams(params)
 	if err != nil {
 		return nil, errors.Wrap(err, errMessage)
@@ -1836,6 +1874,7 @@ func (g *GoCloak) GetClientRoles(ctx context.Context, token, realm, idOfClient s
 	const errMessage = "could not get client roles"
 
 	var result []*Role
+
 	queryParams, err := GetQueryParams(params)
 	if err != nil {
 		return nil, errors.Wrap(err, errMessage)
@@ -2002,10 +2041,12 @@ func (g *GoCloak) GetClients(ctx context.Context, token, realm string, params Ge
 	const errMessage = "could not get clients"
 
 	var result []*Client
+
 	queryParams, err := GetQueryParams(params)
 	if err != nil {
 		return nil, errors.Wrap(err, errMessage)
 	}
+
 	resp, err := g.GetRequestWithBearerAuth(ctx, token).
 		SetResult(&result).
 		SetQueryParams(queryParams).
@@ -2020,7 +2061,7 @@ func (g *GoCloak) GetClients(ctx context.Context, token, realm string, params Ge
 
 // GetClientManagementPermissions returns whether client Authorization permissions have been initialized or not and a reference
 // to the managed permissions
-func (g *GoCloak) GetClientManagementPermissions(ctx context.Context, token, realm string, idOfClient string) (*ManagementPermissionRepresentation, error) {
+func (g *GoCloak) GetClientManagementPermissions(ctx context.Context, token, realm, idOfClient string) (*ManagementPermissionRepresentation, error) {
 	const errMessage = "could not get management permissions"
 
 	var result ManagementPermissionRepresentation
@@ -2042,6 +2083,7 @@ func UserAttributeContains(attributes map[string][]string, attribute, value stri
 			return true
 		}
 	}
+
 	return false
 }
 
@@ -2050,7 +2092,7 @@ func UserAttributeContains(attributes map[string][]string, attribute, value stri
 // -----------
 
 // CreateRealmRole creates a role in a realm
-func (g *GoCloak) CreateRealmRole(ctx context.Context, token string, realm string, role Role) (string, error) {
+func (g *GoCloak) CreateRealmRole(ctx context.Context, token, realm string, role Role) (string, error) {
 	const errMessage = "could not create realm role"
 
 	resp, err := g.GetRequestWithBearerAuth(ctx, token).
@@ -2102,6 +2144,7 @@ func (g *GoCloak) GetRealmRoles(ctx context.Context, token, realm string, params
 	const errMessage = "could not get realm roles"
 
 	var result []*Role
+
 	queryParams, err := GetQueryParams(params)
 	if err != nil {
 		return nil, errors.Wrap(err, errMessage)
@@ -2408,6 +2451,7 @@ func (g *GoCloak) CreateRealm(ctx context.Context, token string, realm RealmRepr
 	if err := checkForError(resp, err, errMessage); err != nil {
 		return "", err
 	}
+
 	return getID(resp), nil
 }
 
@@ -2473,11 +2517,12 @@ func (g *GoCloak) GetAuthenticationFlows(ctx context.Context, token, realm strin
 	if err := checkForError(resp, err, errMessage); err != nil {
 		return nil, err
 	}
+
 	return result, nil
 }
 
 // GetAuthenticationFlow get an authentication flow with the given ID
-func (g *GoCloak) GetAuthenticationFlow(ctx context.Context, token, realm string, authenticationFlowID string) (*AuthenticationFlowRepresentation, error) {
+func (g *GoCloak) GetAuthenticationFlow(ctx context.Context, token, realm, authenticationFlowID string) (*AuthenticationFlowRepresentation, error) {
 	const errMessage = "could not retrieve authentication flows"
 	var result *AuthenticationFlowRepresentation
 	resp, err := g.GetRequestWithBearerAuth(ctx, token).
@@ -2487,6 +2532,7 @@ func (g *GoCloak) GetAuthenticationFlow(ctx context.Context, token, realm string
 	if err := checkForError(resp, err, errMessage); err != nil {
 		return nil, err
 	}
+
 	return result, nil
 }
 
@@ -2512,6 +2558,7 @@ func (g *GoCloak) UpdateAuthenticationFlow(ctx context.Context, token, realm str
 	if err = checkForError(resp, err, errMessage); err != nil {
 		return nil, err
 	}
+
 	return result, nil
 }
 
@@ -2535,6 +2582,7 @@ func (g *GoCloak) GetAuthenticationExecutions(ctx context.Context, token, realm,
 	if err := checkForError(resp, err, errMessage); err != nil {
 		return nil, err
 	}
+
 	return result, nil
 }
 
@@ -2626,10 +2674,11 @@ func (g *GoCloak) GetUserByID(ctx context.Context, accessToken, realm, userID st
 }
 
 // GetUserCount gets the user count in the realm
-func (g *GoCloak) GetUserCount(ctx context.Context, token string, realm string, params GetUsersParams) (int, error) {
+func (g *GoCloak) GetUserCount(ctx context.Context, token, realm string, params GetUsersParams) (int, error) {
 	const errMessage = "could not get user count"
 
 	var result int
+
 	queryParams, err := GetQueryParams(params)
 	if err != nil {
 		return 0, errors.Wrap(err, errMessage)
@@ -2652,6 +2701,7 @@ func (g *GoCloak) GetUserGroups(ctx context.Context, token, realm, userID string
 	const errMessage = "could not get user groups"
 
 	var result []*Group
+
 	queryParams, err := GetQueryParams(params)
 	if err != nil {
 		return nil, errors.Wrap(err, errMessage)
@@ -2674,6 +2724,7 @@ func (g *GoCloak) GetUsers(ctx context.Context, token, realm string, params GetU
 	const errMessage = "could not get users"
 
 	var result []*User
+
 	queryParams, err := GetQueryParams(params)
 	if err != nil {
 		return nil, errors.Wrap(err, errMessage)
@@ -2696,6 +2747,7 @@ func (g *GoCloak) GetUsersByRoleName(ctx context.Context, token, realm, roleName
 	const errMessage = "could not get users by role name"
 
 	var result []*User
+
 	queryParams, err := GetQueryParams(params)
 	if err != nil {
 		return nil, errors.Wrap(err, errMessage)
@@ -2718,6 +2770,7 @@ func (g *GoCloak) GetUsersByClientRoleName(ctx context.Context, token, realm, id
 	const errMessage = "could not get users by client role name"
 
 	var result []*User
+
 	queryParams, err := GetQueryParams(params)
 	if err != nil {
 		return nil, err
@@ -2864,7 +2917,7 @@ func (g *GoCloak) DeleteClientRoleFromUser(ctx context.Context, token, realm, id
 	return g.DeleteClientRolesFromUser(ctx, token, realm, idOfClient, userID, roles)
 }
 
-// DeleteClientRoleFromGroup removes a client role from from the group
+// DeleteClientRoleFromGroup removes a client role from the group
 func (g *GoCloak) DeleteClientRoleFromGroup(ctx context.Context, token, realm, idOfClient, groupID string, roles []Role) error {
 	const errMessage = "could not client role from group"
 
@@ -2955,7 +3008,7 @@ func (g *GoCloak) GetUserBruteForceDetectionStatus(ctx context.Context, accessTo
 // ------------------
 
 // CreateIdentityProvider creates an identity provider in a realm
-func (g *GoCloak) CreateIdentityProvider(ctx context.Context, token string, realm string, providerRep IdentityProviderRepresentation) (string, error) {
+func (g *GoCloak) CreateIdentityProvider(ctx context.Context, token, realm string, providerRep IdentityProviderRepresentation) (string, error) {
 	const errMessage = "could not create identity provider"
 
 	resp, err := g.GetRequestWithBearerAuth(ctx, token).
@@ -3034,6 +3087,7 @@ func (g *GoCloak) ExportIDPPublicBrokerConfig(ctx context.Context, token, realm,
 	}
 
 	result := resp.String()
+
 	return &result, nil
 }
 
@@ -3093,7 +3147,7 @@ func (g *GoCloak) CreateIdentityProviderMapper(ctx context.Context, token, realm
 }
 
 // GetIdentityProviderMapper gets the mapper by id for the given identity provider alias in a realm
-func (g *GoCloak) GetIdentityProviderMapper(ctx context.Context, token string, realm string, alias string, mapperID string) (*IdentityProviderMapper, error) {
+func (g *GoCloak) GetIdentityProviderMapper(ctx context.Context, token, realm, alias, mapperID string) (*IdentityProviderMapper, error) {
 	const errMessage = "could not get identity provider mapper"
 
 	result := IdentityProviderMapper{}
@@ -3300,7 +3354,7 @@ func (g *GoCloak) UpdateResourceClient(ctx context.Context, token, realm string,
 }
 
 // CreateResource creates a resource associated with the client, using access token from admin
-func (g *GoCloak) CreateResource(ctx context.Context, token, realm string, idOfClient string, resource ResourceRepresentation) (*ResourceRepresentation, error) {
+func (g *GoCloak) CreateResource(ctx context.Context, token, realm, idOfClient string, resource ResourceRepresentation) (*ResourceRepresentation, error) {
 	const errMessage = "could not create resource"
 
 	var result ResourceRepresentation
@@ -3408,7 +3462,7 @@ func (g *GoCloak) CreateScope(ctx context.Context, token, realm, idOfClient stri
 }
 
 // GetPermissionScope gets the permission scope associated with the client
-func (g *GoCloak) GetPermissionScope(ctx context.Context, token, realm, idOfClient string, idOfScope string) (*PolicyRepresentation, error) {
+func (g *GoCloak) GetPermissionScope(ctx context.Context, token, realm, idOfClient, idOfScope string) (*PolicyRepresentation, error) {
 	const errMessage = "could not get permission scope"
 
 	var result PolicyRepresentation
@@ -3425,7 +3479,7 @@ func (g *GoCloak) GetPermissionScope(ctx context.Context, token, realm, idOfClie
 }
 
 // UpdatePermissionScope updates a permission scope associated with the client
-func (g *GoCloak) UpdatePermissionScope(ctx context.Context, token, realm, idOfClient string, idOfScope string, policy PolicyRepresentation) error {
+func (g *GoCloak) UpdatePermissionScope(ctx context.Context, token, realm, idOfClient, idOfScope string, policy PolicyRepresentation) error {
 	const errMessage = "could not create permission scope"
 
 	resp, err := g.GetRequestWithBearerAuth(ctx, token).
@@ -3771,10 +3825,10 @@ func checkPermissionTicketParams(permissions []CreatePermissionTicketParams) err
 	}
 
 	for _, pt := range permissions {
-
 		if NilOrEmpty(pt.ResourceID) {
 			return errors.New("resourceID required for permission ticket")
 		}
+
 		if NilOrEmptyArray(pt.ResourceScopes) {
 			return errors.New("at least one resourceScope required for permission ticket")
 		}
@@ -3810,9 +3864,11 @@ func checkPermissionGrantParams(permission PermissionGrantParams) error {
 	if NilOrEmpty(permission.RequesterID) {
 		return errors.New("requesterID required to grant user permission")
 	}
+
 	if NilOrEmpty(permission.ResourceID) {
 		return errors.New("resourceID required to grant user permission")
 	}
+
 	if NilOrEmpty(permission.ScopeName) {
 		return errors.New("scopeName required to grant user permission")
 	}
@@ -3855,6 +3911,7 @@ func checkPermissionUpdateParams(permission PermissionGrantParams) error {
 	if permission.Granted == nil {
 		return errors.New("granted required to update user permission")
 	}
+
 	return nil
 }
 
@@ -3945,6 +4002,7 @@ func (g *GoCloak) UpdatePermission(ctx context.Context, token, realm, idOfClient
 	if NilOrEmpty(permission.ID) {
 		return errors.New("ID of a permission required")
 	}
+
 	resp, err := g.GetRequestWithBearerAuth(ctx, token).
 		SetBody(permission).
 		Put(g.getAdminRealmURL(realm, "clients", idOfClient, "authz", "resource-server", "permission", *permission.Type, *permission.ID))
@@ -4068,7 +4126,7 @@ func (g *GoCloak) MoveCredentialToFirst(ctx context.Context, token, realm, userI
 }
 
 // GetEvents returns events
-func (g *GoCloak) GetEvents(ctx context.Context, token string, realm string, params GetEventsParams) ([]*EventRepresentation, error) {
+func (g *GoCloak) GetEvents(ctx context.Context, token, realm string, params GetEventsParams) ([]*EventRepresentation, error) {
 	const errMessage = "could not get events"
 
 	queryParams, err := GetQueryParams(params)
@@ -4146,7 +4204,7 @@ func (g *GoCloak) CreateClientScopesScopeMappingsRealmRoles(ctx context.Context,
 }
 
 // RegisterRequiredAction creates a required action for a given realm
-func (g *GoCloak) RegisterRequiredAction(ctx context.Context, token string, realm string, requiredAction RequiredActionProviderRepresentation) error {
+func (g *GoCloak) RegisterRequiredAction(ctx context.Context, token, realm string, requiredAction RequiredActionProviderRepresentation) error {
 	const errMessage = "could not create required action"
 
 	resp, err := g.GetRequestWithBearerAuth(ctx, token).
@@ -4161,7 +4219,7 @@ func (g *GoCloak) RegisterRequiredAction(ctx context.Context, token string, real
 }
 
 // GetRequiredActions gets a list of required actions for a given realm
-func (g *GoCloak) GetRequiredActions(ctx context.Context, token string, realm string) ([]*RequiredActionProviderRepresentation, error) {
+func (g *GoCloak) GetRequiredActions(ctx context.Context, token, realm string) ([]*RequiredActionProviderRepresentation, error) {
 	const errMessage = "could not get required actions"
 	var result []*RequiredActionProviderRepresentation
 
@@ -4177,7 +4235,7 @@ func (g *GoCloak) GetRequiredActions(ctx context.Context, token string, realm st
 }
 
 // GetRequiredAction gets a required action for a given realm
-func (g *GoCloak) GetRequiredAction(ctx context.Context, token string, realm string, alias string) (*RequiredActionProviderRepresentation, error) {
+func (g *GoCloak) GetRequiredAction(ctx context.Context, token, realm, alias string) (*RequiredActionProviderRepresentation, error) {
 	const errMessage = "could not get required action"
 	var result RequiredActionProviderRepresentation
 
@@ -4197,12 +4255,13 @@ func (g *GoCloak) GetRequiredAction(ctx context.Context, token string, realm str
 }
 
 // UpdateRequiredAction updates a required action for a given realm
-func (g *GoCloak) UpdateRequiredAction(ctx context.Context, token string, realm string, requiredAction RequiredActionProviderRepresentation) error {
+func (g *GoCloak) UpdateRequiredAction(ctx context.Context, token, realm string, requiredAction RequiredActionProviderRepresentation) error {
 	const errMessage = "could not update required action"
 
 	if NilOrEmpty(requiredAction.ProviderID) {
 		return errors.New("providerId is required for updating a required action")
 	}
+
 	resp, err := g.GetRequestWithBearerAuth(ctx, token).
 		SetBody(requiredAction).
 		Put(g.getAdminRealmURL(realm, "authentication", "required-actions", *requiredAction.ProviderID))
@@ -4211,12 +4270,13 @@ func (g *GoCloak) UpdateRequiredAction(ctx context.Context, token string, realm 
 }
 
 // DeleteRequiredAction updates a required action for a given realm
-func (g *GoCloak) DeleteRequiredAction(ctx context.Context, token string, realm string, alias string) error {
+func (g *GoCloak) DeleteRequiredAction(ctx context.Context, token, realm, alias string) error {
 	const errMessage = "could not delete required action"
 
 	if alias == "" {
 		return errors.New("alias is required for deleting a required action")
 	}
+
 	resp, err := g.GetRequestWithBearerAuth(ctx, token).
 		Delete(g.getAdminRealmURL(realm, "authentication", "required-actions", alias))
 

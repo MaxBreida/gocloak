@@ -6,12 +6,12 @@ import (
 	"testing"
 
 	"github.com/Nerzal/gocloak/v13"
-
 	"github.com/stretchr/testify/assert"
 )
 
 func TestStringOrArray_Unmarshal(t *testing.T) {
 	t.Parallel()
+
 	jsonString := []byte("\"123\"")
 	var dataString gocloak.StringOrArray
 	err := json.Unmarshal(jsonString, &dataString)
@@ -29,15 +29,16 @@ func TestStringOrArray_Unmarshal(t *testing.T) {
 
 func TestStringOrArray_Marshal(t *testing.T) {
 	t.Parallel()
+
 	dataString := gocloak.StringOrArray{"123"}
 	jsonString, err := json.Marshal(&dataString)
 	assert.NoErrorf(t, err, "Marshaling failed for one string: %s", dataString)
-	assert.Equal(t, "\"123\"", string(jsonString))
+	assert.JSONEq(t, "\"123\"", string(jsonString))
 
 	dataArray := gocloak.StringOrArray{"1", "2", "3"}
 	jsonArray, err := json.Marshal(&dataArray)
 	assert.NoError(t, err, "Marshaling failed for array of strings: %s", dataArray)
-	assert.Equal(t, "[\"1\",\"2\",\"3\"]", string(jsonArray))
+	assert.JSONEq(t, "[\"1\",\"2\",\"3\"]", string(jsonArray))
 }
 
 func TestEnforcedString_UnmarshalJSON(t *testing.T) {
@@ -82,7 +83,7 @@ func TestEnforcedString_MarshalJSON(t *testing.T) {
 	data := gocloak.EnforcedString("foo")
 	jsonString, err := json.Marshal(&data)
 	assert.NoErrorf(t, err, "Unmarshalling failed with data: %v", data)
-	assert.Equal(t, `"foo"`, string(jsonString))
+	assert.JSONEq(t, `"foo"`, string(jsonString))
 }
 
 func TestGetQueryParams(t *testing.T) {
@@ -96,9 +97,9 @@ func TestGetQueryParams(t *testing.T) {
 
 	params, err := gocloak.GetQueryParams(TestParams{})
 	assert.NoError(t, err)
-	assert.True(
+	assert.Len(
 		t,
-		len(params) == 0,
+		params, 0,
 		"Params must be empty, but got: %+v",
 		params,
 	)
@@ -147,12 +148,12 @@ func TestParseAPIErrType(t *testing.T) {
 		},
 		{
 			Name:     "invalid grant",
-			Error:    errors.New("something something invalid_grant something"),
+			Error:    errors.New("something invalid_grant something"),
 			Expected: gocloak.APIErrTypeInvalidGrant,
 		},
 		{
 			Name:     "other error",
-			Error:    errors.New("something something unsupported_grant_type something"),
+			Error:    errors.New("something unsupported_grant_type something"),
 			Expected: gocloak.APIErrTypeUnknown,
 		},
 	}

@@ -20,6 +20,7 @@ func PString(value *string) string {
 	if value == nil {
 		return ""
 	}
+
 	return *value
 }
 
@@ -33,6 +34,7 @@ func PBool(value *bool) bool {
 	if value == nil {
 		return false
 	}
+
 	return *value
 }
 
@@ -56,6 +58,7 @@ func PInt(value *int) int {
 	if value == nil {
 		return 0
 	}
+
 	return *value
 }
 
@@ -64,6 +67,7 @@ func PInt32(value *int32) int32 {
 	if value == nil {
 		return 0
 	}
+
 	return *value
 }
 
@@ -72,6 +76,7 @@ func PInt64(value *int64) int64 {
 	if value == nil {
 		return 0
 	}
+
 	return *value
 }
 
@@ -90,6 +95,7 @@ func PFloat32(value *float32) float32 {
 	if value == nil {
 		return 0
 	}
+
 	return *value
 }
 
@@ -98,6 +104,7 @@ func PFloat64(value *float64) float64 {
 	if value == nil {
 		return 0
 	}
+
 	return *value
 }
 
@@ -108,13 +115,11 @@ func NilOrEmpty(value *string) bool {
 
 // NilOrEmptyArray returns true if string is empty or has a nil value
 func NilOrEmptyArray(value *[]string) bool {
-
 	if value == nil || len(*value) == 0 {
 		return true
 	}
 
 	return (*value)[0] == ""
-
 }
 
 // DecisionStrategyP returns a pointer for a DecisionStrategy value
@@ -137,6 +142,7 @@ func PStringSlice(value *[]string) []string {
 	if value == nil {
 		return []string{}
 	}
+
 	return *value
 }
 

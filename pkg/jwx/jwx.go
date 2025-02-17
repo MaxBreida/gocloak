@@ -17,8 +17,9 @@ import (
 )
 
 // SignClaims signs the given claims using a given key and a method
-func SignClaims(claims jwt.Claims, key interface{}, method jwt.SigningMethod) (string, error) {
+func SignClaims(claims jwt.Claims, key any, method jwt.SigningMethod) (string, error) {
 	token := jwt.NewWithClaims(method, claims)
+
 	return token.SignedString(key)
 }
 
@@ -27,12 +28,14 @@ func DecodeAccessTokenHeader(token string) (*DecodedAccessTokenHeader, error) {
 	const errMessage = "could not decode access token header"
 	token = strings.Replace(token, "Bearer ", "", 1)
 	headerString := strings.Split(token, ".")
+
 	decodedData, err := base64.RawStdEncoding.DecodeString(headerString[0])
 	if err != nil {
 		return nil, errors.Wrap(err, errMessage)
 	}
 
 	result := &DecodedAccessTokenHeader{}
+
 	err = json.Unmarshal(decodedData, result)
 	if err != nil {
 		return nil, errors.Wrap(err, errMessage)
@@ -49,17 +52,16 @@ func toBigInt(v string) (*big.Int, error) {
 
 	res := big.NewInt(0)
 	res.SetBytes(decRes)
+
 	return res, nil
 }
 
-var (
-	curves = map[string]elliptic.Curve{
-		"P-224": elliptic.P224(),
-		"P-256": elliptic.P256(),
-		"P-384": elliptic.P384(),
-		"P-521": elliptic.P521(),
-	}
-)
+var curves = map[string]elliptic.Curve{
+	"P-224": elliptic.P224(),
+	"P-256": elliptic.P256(),
+	"P-384": elliptic.P384(),
+	"P-521": elliptic.P521(),
+}
 
 func decodeECDSAPublicKey(x, y, crv *string) (*ecdsa.PublicKey, error) {
 	const errMessage = "could not decode public key"
@@ -74,10 +76,12 @@ func decodeECDSAPublicKey(x, y, crv *string) (*ecdsa.PublicKey, error) {
 		return nil, errors.Wrap(err, errMessage)
 	}
 	var c elliptic.Curve
+
 	var ok bool
 	if c, ok = curves[*crv]; !ok {
 		return nil, errors.Wrap(fmt.Errorf("unknown curve alg: %s", *crv), errMessage)
 	}
+
 	return &ecdsa.PublicKey{X: xInt, Y: yInt, Curve: c}, nil
 }
 
@@ -104,12 +108,14 @@ func decodeRSAPublicKey(e, n *string) (*rsa.PublicKey, error) {
 
 	eReader := bytes.NewReader(eBytes)
 	var eInt uint64
+
 	err = binary.Read(eReader, binary.BigEndian, &eInt)
 	if err != nil {
 		return nil, errors.Wrap(err, errMessage)
 	}
 
 	pKey := rsa.PublicKey{N: nInt, E: int(eInt)}
+
 	return &pKey, nil
 }
 
@@ -123,17 +129,18 @@ func DecodeAccessTokenRSACustomClaims(accessToken string, e, n *string, customCl
 		return nil, errors.Wrap(err, errMessage)
 	}
 
-	token2, err := jwt.ParseWithClaims(accessToken, customClaims, func(token *jwt.Token) (interface{}, error) {
+	token2, err := jwt.ParseWithClaims(accessToken, customClaims, func(token *jwt.Token) (any, error) {
 		// Don't forget to validate the alg is what you expect:
 		if _, ok := token.Method.(*jwt.SigningMethodRSA); !ok {
 			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
 		}
+
 		return rsaPublicKey, nil
 	})
-
 	if err != nil {
 		return nil, errors.Wrap(err, errMessage)
 	}
+
 	return token2, nil
 }
 
@@ -147,16 +154,17 @@ func DecodeAccessTokenECDSACustomClaims(accessToken string, x, y, crv *string, c
 		return nil, errors.Wrap(err, errMessage)
 	}
 
-	token2, err := jwt.ParseWithClaims(accessToken, customClaims, func(token *jwt.Token) (interface{}, error) {
+	token2, err := jwt.ParseWithClaims(accessToken, customClaims, func(token *jwt.Token) (any, error) {
 		// Don't forget to validate the alg is what you expect:
 		if _, ok := token.Method.(*jwt.SigningMethodECDSA); !ok {
 			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
 		}
+
 		return publicKey, nil
 	})
-
 	if err != nil {
 		return nil, errors.Wrap(err, errMessage)
 	}
+
 	return token2, nil
 }

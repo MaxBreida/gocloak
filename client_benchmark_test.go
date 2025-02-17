@@ -5,7 +5,6 @@ import (
 	"testing"
 
 	"github.com/Nerzal/gocloak/v13"
-
 	"github.com/stretchr/testify/assert"
 )
 
@@ -14,6 +13,7 @@ func BenchmarkLogin(b *testing.B) {
 	client := gocloak.NewClient(cfg.HostName)
 	SetUpTestUser(b, client)
 	b.ResetTimer()
+
 	for i := 0; i < b.N; i++ {
 		_, err := client.Login(
 			context.Background(),
@@ -52,6 +52,7 @@ func BenchmarkGetGroups(b *testing.B) {
 	client := gocloak.NewClient(cfg.HostName)
 	token := GetAdminToken(b, client)
 	b.ResetTimer()
+
 	for i := 0; i < b.N; i++ {
 		_, err := client.GetGroups(
 			context.Background(),
@@ -70,7 +71,9 @@ func BenchmarkGetGroupsFull(b *testing.B) {
 	params := gocloak.GetGroupsParams{
 		Full: gocloak.BoolP(true),
 	}
+
 	b.ResetTimer()
+
 	for i := 0; i < b.N; i++ {
 		_, err := client.GetGroups(
 			context.Background(),
@@ -90,6 +93,7 @@ func BenchmarkGetGroupsBrief(b *testing.B) {
 	}
 	token := GetAdminToken(b, client)
 	b.ResetTimer()
+
 	for i := 0; i < b.N; i++ {
 		_, err := client.GetGroups(
 			context.Background(),
@@ -104,10 +108,13 @@ func BenchmarkGetGroupsBrief(b *testing.B) {
 func BenchmarkGetGroup(b *testing.B) {
 	cfg := GetConfig(b)
 	client := gocloak.NewClient(cfg.HostName)
+
 	teardown, groupID := CreateGroup(b, client)
 	defer teardown()
+
 	token := GetAdminToken(b, client)
 	b.ResetTimer()
+
 	for i := 0; i < b.N; i++ {
 		_, err := client.GetGroup(
 			context.Background(),
@@ -126,8 +133,10 @@ func BenchmarkGetGroupByPath(b *testing.B) {
 	token := GetAdminToken(b, client)
 	group, err := client.GetGroup(context.Background(), token.AccessToken, cfg.GoCloak.Realm, groupID)
 	assert.NoError(b, err)
+
 	defer teardown()
 	b.ResetTimer()
+
 	for i := 0; i < b.N; i++ {
 		_, err := client.GetGroupByPath(
 			context.Background(),

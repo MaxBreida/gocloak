@@ -34,8 +34,7 @@ type Claims struct {
 }
 
 // Address TODO what fields does any address have?
-type Address struct {
-}
+type Address struct{}
 
 // RealmAccess holds roles of the user
 type RealmAccess struct {

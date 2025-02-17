@@ -3,15 +3,15 @@ package gocloak_test
 import (
 	"testing"
 
-	"github.com/stretchr/testify/assert"
-
 	"github.com/Nerzal/gocloak/v13"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestStringP(t *testing.T) {
 	p := gocloak.StringP("test value")
 	assert.Equal(t, "test value", *p)
 }
+
 func TestPString(t *testing.T) {
 	p := "test value"
 	v := gocloak.PString(&p)
@@ -26,9 +26,11 @@ func TestPStringNil(t *testing.T) {
 func TestBoolP(t *testing.T) {
 	p1 := gocloak.BoolP(false)
 	assert.False(t, *p1)
+
 	p2 := gocloak.BoolP(false)
+
 	assert.False(t, *p1)
-	assert.False(t, p1 == p2)
+	assert.NotSame(t, p1, p2)
 
 	p := gocloak.BoolP(true)
 	assert.True(t, *p)
@@ -102,6 +104,7 @@ func TestFloat32P(t *testing.T) {
 	p := gocloak.Float32P(v)
 	assert.Equal(t, v, *p)
 }
+
 func TestFloat64P(t *testing.T) {
 	v := 42.42
 	p := gocloak.Float64P(v)
@@ -118,6 +121,7 @@ func TestPFloat32(t *testing.T) {
 	assert.Equal(t, float32(0), v)
 	assert.IsType(t, float32(0), v)
 }
+
 func TestPFloat64(t *testing.T) {
 	p := 42.42
 	v := gocloak.PFloat64(&p)
@@ -128,12 +132,13 @@ func TestPFloat64(t *testing.T) {
 	assert.Equal(t, float64(0), v)
 	assert.IsType(t, float64(0), v)
 }
+
 func TestNilOrEmptyArray(t *testing.T) {
 	a := gocloak.NilOrEmptyArray(&[]string{"c", "d"})
 	b := gocloak.NilOrEmptyArray(&[]string{"", "b"})
 	c := gocloak.NilOrEmptyArray(&[]string{})
+
 	assert.False(t, a)
 	assert.True(t, b)
 	assert.True(t, c)
-
 }

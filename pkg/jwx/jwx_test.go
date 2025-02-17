@@ -8,9 +8,8 @@ import (
 	"log"
 	"testing"
 
-	"github.com/stretchr/testify/require"
-
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/stretchr/testify/require"
 )
 
 var claims = jwt.MapClaims{
@@ -19,10 +18,12 @@ var claims = jwt.MapClaims{
 
 func generateJWTToken(privKey *ecdsa.PrivateKey, sMethod *jwt.SigningMethodECDSA) (string, error) {
 	token := jwt.NewWithClaims(sMethod, claims)
+
 	tokenString, err := token.SignedString(privKey)
 	if err != nil {
 		log.Fatal(err)
 	}
+
 	return tokenString, nil
 }
 
